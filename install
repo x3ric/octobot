@@ -1,0 +1,23 @@
+#!/bin/env bash
+need() {
+    if ! command -v "$1" &>/dev/null; then
+        if command -v pacman &>/dev/null; then
+            sudo pacman -Sy --needed --noconfirm "$1"
+        else
+            echo "install $1 with your distro pkgmanager"
+        fi
+    fi
+}
+need curl
+need git
+need jq
+git clone https://github.com/X3ric/octobot
+cd octobot
+chmod +x "./ghbot"
+if [[ ":$PATH:" == *":$HOME/.local/bin:"* ]]; then
+    cp "./ghbot" "$HOME/.local/bin"
+else
+    sudo cp "./ghbot" "/usr/bin"
+fi 
+cd ..
+rm -rf octobot
