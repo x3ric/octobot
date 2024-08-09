@@ -184,6 +184,11 @@ process_users() {
   wait
 }
 
+parse_blacklist() {
+  local blacklist_input="$1"
+  IFS=$'\n' read -r -d '' -a blacklist <<< "$(echo "$blacklist_input" | tr ',' '\n')"
+}
+
 cleanup() {
   rm -f "$rate_limit_count_file"
   exit 0
@@ -192,15 +197,21 @@ cleanup() {
 trap cleanup SIGINT EXIT
 
 command="$1"
-target_user="${2:-}"
+shift
+
+blacklist=()
 
 case "$command" in
   "unfollow")
+    if [[ ! -z "$1" ]]; then
+      blacklist_input="$1"
+      parse_blacklist "$blacklist_input"
+    fi
     following=($(fetch_following "$github_user"))
     followers=($(fetch_followers "$github_user"))
     users_to_unfollow=()
     for user in "${following[@]}"; do
-      if [[ ! " ${followers[@]} " =~ " $user " && "$user" != "$github_user" ]]; then
+      if [[ ! " ${followers[@]} " =~ " $user " && "$user" != "$github_user" && ! " ${blacklist[@]} " =~ " $user " ]]; then
         users_to_unfollow+=("$user")
       fi
     done
@@ -215,14 +226,21 @@ case "$command" in
     echo "You follow ${#following[@]} users."
     ;;
   "follow")
-    if [[ -z "$target_user" ]]; then
+    if [[ ! -z "$1" ]]; then
+      target_user="$1"
+      shift
+    elif [[ -z "$target_user" ]]; then
       read -p "User to fetch? " target_user
+    fi
+    if [[ ! -z "$1" ]]; then
+      blacklist_input="$1"
+      parse_blacklist "$blacklist_input"
     fi
     followers=($(fetch_followers "$target_user"))
     following=($(fetch_following "$github_user"))
     users_to_follow=()
     for user in "${followers[@]}"; do
-      if [[ ! " ${following[@]} " =~ " $user " && "$user" != "$github_user" ]]; then
+      if [[ ! " ${following[@]} " =~ " $user " && "$user" != "$github_user" && ! " ${blacklist[@]} " =~ " $user " ]]; then
         users_to_follow+=("$user")
       fi
     done
@@ -233,10 +251,13 @@ cat << EOF
 Invalid option: $command
 
 Usage:
- ghbot followers             # Display the count of your followers
- ghbot following             # Display the count of users you follow
- ghbot follow [username]     # Follow users who follow the specified username
- ghbot unfollow              # Unfollow users who do not follow you back
+ ghbot followers                     # Display the count of your followers
+ ghbot following                     # Display the count of users you follow
+ ghbot follow [username] [blacklist] # Follow users who follow the specified username
+ ghbot unfollow [blacklist]          # Unfollow users who do not follow you back
+
+Info:
+  blacklist -> \"usr0,usr1,..\" (Optional)
 
 EOF
     exit 1
