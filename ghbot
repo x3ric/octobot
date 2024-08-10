@@ -33,6 +33,10 @@ handle_rate_limit() {
   echo "$count" > "$rate_limit_count_file"
 }
 
+rate_reset() {
+  rm -f "$rate_limit_count_file"
+}
+
 fetch_data() {
   local url="$1"
   local all_data=()
@@ -43,6 +47,7 @@ fetch_data() {
       handle_rate_limit
       continue
     fi
+    rate_reset
     all_data+=($(echo "$response" | jq -r '.[] | .login'))
     url=$(curl -sI -H "Authorization: token $personal_github_token" "$url" | grep -i '^Link:' | sed -e 's/.*<\(https:\/\/api.github.com\/[^\"]*\)>; rel="next".*/\1/')
   done
@@ -71,6 +76,7 @@ fetch_followers() {
         fi
         page=$((page + 1))
     done
+    rate_reset
     echo "${all_followers[@]}"
 }
 
@@ -96,6 +102,7 @@ fetch_following() {
         fi
         page=$((page + 1))
     done
+    rate_reset
     echo "${all_following[@]}"
 }
 
@@ -133,6 +140,7 @@ follow_user() {
             exit 1
             ;;
     esac
+    rate_reset
 }
 
 unfollow_user() {
@@ -163,6 +171,7 @@ unfollow_user() {
             exit 1
             ;;
     esac
+    rate_reset
 }
 
 process_users() {
@@ -190,7 +199,7 @@ parse_blacklist() {
 }
 
 cleanup() {
-  rm -f "$rate_limit_count_file"
+  rate_reset
   exit 0
 }
 
