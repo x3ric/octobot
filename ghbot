@@ -117,7 +117,7 @@ follow_user() {
         "204")
             echo "User: $user has been followed!"
             ;;
-        "403"|"429")
+        "403"|"429"|"500")
             echo "Error following $user: Forbidden. Handling rate limit..."
             handle_rate_limit
             follow_user "$user"
@@ -153,7 +153,7 @@ unfollow_user() {
         "204")
             echo "User: $user has been unfollowed!"
             ;;
-        "403"|"429")
+        "403"|"429"|"500")
             echo "Error unfollowing $user: Forbidden. Handling rate limit..."
             handle_rate_limit
             unfollow_user "$user"
